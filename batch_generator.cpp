@@ -45,7 +45,7 @@ void InitUnigramTable() {
 extern "C"
 void init(){
 	// Reading voc2id
-	fin = fopen("./data/voc2id.txt", "r");
+	fin = fopen("/home/SENSETIME/zhangxuemiao/dataset/data/voc2id.txt", "r");
 	while(fscanf(fin, "%s", word) == 1){
 		tmp = fscanf(fin, "%d\n", &wid);
 		voc2id[string(word)] = wid;
@@ -55,7 +55,7 @@ void init(){
 	voc_size = voc2id.size();
 
 	// Reading id2freq
-	fin = fopen("./data/id2freq.txt", "r");
+	fin = fopen("/home/SENSETIME/zhangxuemiao/dataset/data/id2freq.txt", "r");
 	while(fscanf(fin, "%d", &wid) == 1){
 		tmp = fscanf(fin, "%d\n", &freq);
 		id2freq[wid] = freq;
@@ -63,7 +63,7 @@ void init(){
 	}
 
 	// Reading de2id
-	fin = fopen("./data/de2id.txt", "r");
+	fin = fopen("/home/SENSETIME/zhangxuemiao/dataset/data/de2id.txt", "r");
 	while(fscanf(fin, "%s", word) == 1){
 		tmp = fscanf(fin, "%d\n", &wid);
 		de2id[word] = wid;
@@ -76,7 +76,7 @@ void init(){
 extern "C"
 void reset(){
 	freq = 0;
-	fin  = fopen("./data/data.txt", "r");
+	fin  = fopen("/home/SENSETIME/zhangxuemiao/dataset/data/data.txt", "r");
 }
 
 int max_len = 0, cntxt_edge_label;
