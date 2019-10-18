@@ -5,6 +5,8 @@ from web.embedding import Embedding
 from web.evaluate import evaluate_on_all
 from sparse import COO
 
+base_dir = '/home/SENSETIME/zhangxuemiao/dataset/data'
+
 
 class SynGCN(Model):
 
@@ -60,7 +62,6 @@ class SynGCN(Model):
         self.logger.info("Loading data")
 
         import os
-        base_dir = '/home/SENSETIME/zhangxuemiao/dataset/data'
 
         self.voc2id = read_mappings(os.path.join(base_dir, 'voc2id.txt'))
         self.voc2id = {k: int(v) for k, v in self.voc2id.items()}
@@ -233,7 +234,8 @@ class SynGCN(Model):
 
         Returns
         -------
-        out		List of output of different GCN layers with first element as input itself, i.e., [gcn_in, gcn_layer1_out, gcn_layer2_out ...]
+        out		List of output of different GCN layers with first element as input itself,
+                i.e., [gcn_in, gcn_layer1_out, gcn_layer2_out ...]
         """
         out = []
         out.append(gcn_in)
@@ -243,7 +245,6 @@ class SynGCN(Model):
             if len(out) > 1: in_dim = gcn_dim  # After first iteration the in_dim = gcn_dim
 
             with tf.name_scope('%s-%d' % (name, layer)):
-
                 if layer > 0 and self.p.loop:
                     with tf.variable_scope('Loop-name-%s_layer-%d' % (name, layer)) as scope:
                         w_loop = tf.get_variable('w_loop', [in_dim, gcn_dim],
@@ -266,9 +267,7 @@ class SynGCN(Model):
                     act_sum = tf.zeros([batch_size, max_nodes, gcn_dim])
 
                 for lbl in range(max_labels):
-
                     with tf.variable_scope('label-%d_name-%s_layer-%d' % (lbl, name, layer)) as scope:
-
                         w_in = tf.get_variable('w_in', [in_dim, gcn_dim],
                                                initializer=tf.contrib.layers.xavier_initializer(),
                                                regularizer=self.regularizer)
@@ -313,13 +312,16 @@ class SynGCN(Model):
                         if self.p.dropout != 1.0: out_t = tf.nn.dropout(out_t, keep_prob=self.p.dropout)
 
                         if w_gating:
-                            inp_gout = tf.tensordot(gcn_in, tf.sigmoid(w_gout), axes=[2, 0]) + tf.expand_dims(b_gout,
-                                                                                                              axis=0)
+                            inp_gout = tf.tensordot(gcn_in,
+                                                    tf.sigmoid(w_gout), axes=[2, 0]) + tf.expand_dims(b_gout, axis=0)
                             out_act = self.aggregate(inp_gout, adj_matrix)
                         else:
                             out_act = out_t
-
+                    print(f'in_act -> {in_act}')
+                    print(f'out_t -> {out_t}')
+                    print(f'out_act -> {out_act}')
                     act_sum += in_act + out_act
+                    print(f'act_sum -> {act_sum}')
 
                 gcn_out = tf.nn.relu(act_sum) if layer != num_layers - 1 else act_sum
 
@@ -360,15 +362,26 @@ class SynGCN(Model):
             self.context_bias = tf.get_variable('context_bias', [self.vocab_size + 1],
                                                 initializer=tf.constant_initializer(0.0), regularizer=self.regularizer)
 
+        print(f'self.embed_matrix -> {self.embed_matrix}')
+        print(f'self.sent_wrds -> {self.sent_wrds}')
         embed = tf.nn.embedding_lookup(self.embed_matrix, self.sent_wrds)
 
         gcn_in = embed
         gcn_in_dim = self.p.embed_dim
 
+        print(f'gcn_in -> {gcn_in}')
+        print(f'gcn_in_dim -> {gcn_in_dim}')
+
         gcn_out = self.gcnLayer(gcn_in=gcn_in, in_dim=gcn_in_dim, gcn_dim=self.p.embed_dim,
                                 batch_size=self.p.batch_size, max_nodes=self.seq_len, max_labels=self.num_deLabel,
                                 adj_mat=self.adj_mat, num_layers=self.p.gcn_layer, name="GCN")
+
+        print(f'gcn_out -> {gcn_out}')
+
         nn_out = gcn_out[-1]
+
+        print(f'nn_out -> {nn_out}')
+
         return nn_out
 
     def add_loss_op(self, nn_out):
