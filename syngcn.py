@@ -5,7 +5,9 @@ from web.embedding import Embedding
 from web.evaluate import evaluate_on_all
 from sparse import COO
 
-base_dir = '/home/SENSETIME/zhangxuemiao/dataset/data'
+from settings import settings
+
+base_dir = settings.base_data_dir
 
 
 class SynGCN(Model):
@@ -599,16 +601,16 @@ if __name__ == "__main__":
     parser.add_argument('-gpu', dest="gpu", default='0', help='GPU to use')
     parser.add_argument('-name', dest="name", default='test_run', help='Name of the run')
     parser.add_argument('-embed', dest="embed_loc", default=None, help='Embedding for initialization')
-    parser.add_argument('-embed_dim', dest="embed_dim", default=300, type=int, help='Embedding Dimension')
+    parser.add_argument('-embed_dim', dest="embed_dim", default=15, type=int, help='Embedding Dimension')
     parser.add_argument('-total', dest="total_sents", default=56974869, type=int,
                         help='Total number of sentences in file')
     parser.add_argument('-lr', dest="lr", default=0.001, type=float, help='Learning rate')
-    parser.add_argument('-batch', dest="batch_size", default=128, type=int, help='Batch size')
+    parser.add_argument('-batch', dest="batch_size", default=8, type=int, help='Batch size')
     parser.add_argument('-epoch', dest="max_epochs", default=50, type=int, help='Max epochs')
     parser.add_argument('-l2', dest="l2", default=0.00001, type=float, help='L2 regularization')
     parser.add_argument('-seed', dest="seed", default=1234, type=int, help='Seed for randomization')
     parser.add_argument('-sample', dest="sample", default=1e-4, type=float, help='Subsampling parameter')
-    parser.add_argument('-neg', dest="num_neg", default=100, type=int, help='Number of negative samples')
+    parser.add_argument('-neg', dest="num_neg", default=10, type=int, help='Number of negative samples')
     parser.add_argument('-side_int', dest="side_int", default=10000, type=int, help='Number of negative samples')
     parser.add_argument('-gcn_layer', dest="gcn_layer", default=1, type=int,
                         help='Number of layers in GCN over dependency tree')
@@ -627,7 +629,7 @@ if __name__ == "__main__":
 
     # Added these two arguments to enable others to personalize the training set. Otherwise, the programme may suffer from memory overflow easily.
     # It is suggested that the -maxlen be set no larger than 100.
-    parser.add_argument('-maxsentlen', dest="max_sent_len", default=50, type=int,
+    parser.add_argument('-maxsentlen', dest="max_sent_len", default=10, type=int,
                         help='Max length of the sentences in data.txt (default: 40)')
     parser.add_argument('-maxdeplen', dest="max_dep_len", default=800, type=int,
                         help='Max length of the dependency relations in data.txt (default: 800)')
