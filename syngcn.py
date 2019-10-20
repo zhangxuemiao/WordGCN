@@ -1,17 +1,9 @@
-import os
-
-import ctypes
-import tensorflow as tf
-import time
-from sparse import COO
+from models import Model
+from helper import *
+import tensorflow as tf, time, ctypes
 from web.embedding import Embedding
 from web.evaluate import evaluate_on_all
-
-from helper import *
-from models import Model
-from settings import settings
-
-base_dir = settings.base_data_dir
+from sparse import COO
 
 
 class SynGCN(Model):
@@ -67,6 +59,9 @@ class SynGCN(Model):
         """
         self.logger.info("Loading data")
 
+        import os
+        base_dir = '/home/SENSETIME/zhangxuemiao/dataset/data'
+
         self.voc2id = read_mappings(os.path.join(base_dir, 'voc2id.txt'))
         self.voc2id = {k: int(v) for k, v in self.voc2id.items()}
         self.id2freq = read_mappings(os.path.join(base_dir, 'id2freq.txt'))
@@ -82,8 +77,8 @@ class SynGCN(Model):
         # Calculating rejection probability
         corpus_size = np.sum(list(self.id2freq.values()))
         rel_freq = {_id: freq / corpus_size for _id, freq in self.id2freq.items()}
-        self.rej_prob = {_id: (1 - self.p.sample / rel_freq[_id]) - np.sqrt(self.p.sample / rel_freq[_id])
-                         for _id in self.id2freq}
+        self.rej_prob = {_id: (1 - self.p.sample / rel_freq[_id]) - np.sqrt(self.p.sample / rel_freq[_id]) for _id in
+                         self.id2freq}
         self.voc_freq_l = [self.id2freq[_id] for _id in range(len(self.voc2id))]
 
         if not self.p.context: self.p.win_size = 0
@@ -238,8 +233,7 @@ class SynGCN(Model):
 
         Returns
         -------
-        out		List of output of different GCN layers with first element as input itself,
-                i.e., [gcn_in, gcn_layer1_out, gcn_layer2_out ...]
+        out		List of output of different GCN layers with first element as input itself, i.e., [gcn_in, gcn_layer1_out, gcn_layer2_out ...]
         """
         out = []
         out.append(gcn_in)
@@ -249,6 +243,7 @@ class SynGCN(Model):
             if len(out) > 1: in_dim = gcn_dim  # After first iteration the in_dim = gcn_dim
 
             with tf.name_scope('%s-%d' % (name, layer)):
+
                 if layer > 0 and self.p.loop:
                     with tf.variable_scope('Loop-name-%s_layer-%d' % (name, layer)) as scope:
                         w_loop = tf.get_variable('w_loop', [in_dim, gcn_dim],
@@ -271,7 +266,9 @@ class SynGCN(Model):
                     act_sum = tf.zeros([batch_size, max_nodes, gcn_dim])
 
                 for lbl in range(max_labels):
+
                     with tf.variable_scope('label-%d_name-%s_layer-%d' % (lbl, name, layer)) as scope:
+
                         w_in = tf.get_variable('w_in', [in_dim, gcn_dim],
                                                initializer=tf.contrib.layers.xavier_initializer(),
                                                regularizer=self.regularizer)
@@ -316,16 +313,13 @@ class SynGCN(Model):
                         if self.p.dropout != 1.0: out_t = tf.nn.dropout(out_t, keep_prob=self.p.dropout)
 
                         if w_gating:
-                            inp_gout = tf.tensordot(gcn_in,
-                                                    tf.sigmoid(w_gout), axes=[2, 0]) + tf.expand_dims(b_gout, axis=0)
+                            inp_gout = tf.tensordot(gcn_in, tf.sigmoid(w_gout), axes=[2, 0]) + tf.expand_dims(b_gout,
+                                                                                                              axis=0)
                             out_act = self.aggregate(inp_gout, adj_matrix)
                         else:
                             out_act = out_t
-                    print(f'in_act -> {in_act}')
-                    print(f'out_t -> {out_t}')
-                    print(f'out_act -> {out_act}')
+
                     act_sum += in_act + out_act
-                    print(f'act_sum -> {act_sum}')
 
                 gcn_out = tf.nn.relu(act_sum) if layer != num_layers - 1 else act_sum
 
@@ -366,26 +360,15 @@ class SynGCN(Model):
             self.context_bias = tf.get_variable('context_bias', [self.vocab_size + 1],
                                                 initializer=tf.constant_initializer(0.0), regularizer=self.regularizer)
 
-        print(f'self.embed_matrix -> {self.embed_matrix}')
-        print(f'self.sent_wrds -> {self.sent_wrds}')
         embed = tf.nn.embedding_lookup(self.embed_matrix, self.sent_wrds)
 
         gcn_in = embed
         gcn_in_dim = self.p.embed_dim
 
-        print(f'gcn_in -> {gcn_in}')
-        print(f'gcn_in_dim -> {gcn_in_dim}')
-
         gcn_out = self.gcnLayer(gcn_in=gcn_in, in_dim=gcn_in_dim, gcn_dim=self.p.embed_dim,
                                 batch_size=self.p.batch_size, max_nodes=self.seq_len, max_labels=self.num_deLabel,
                                 adj_mat=self.adj_mat, num_layers=self.p.gcn_layer, name="GCN")
-
-        print(f'gcn_out -> {gcn_out}')
-
         nn_out = gcn_out[-1]
-
-        print(f'nn_out -> {nn_out}')
-
         return nn_out
 
     def add_loss_op(self, nn_out):
@@ -603,16 +586,16 @@ if __name__ == "__main__":
     parser.add_argument('-gpu', dest="gpu", default='0', help='GPU to use')
     parser.add_argument('-name', dest="name", default='test_run', help='Name of the run')
     parser.add_argument('-embed', dest="embed_loc", default=None, help='Embedding for initialization')
-    parser.add_argument('-embed_dim', dest="embed_dim", default=15, type=int, help='Embedding Dimension')
+    parser.add_argument('-embed_dim', dest="embed_dim", default=300, type=int, help='Embedding Dimension')
     parser.add_argument('-total', dest="total_sents", default=56974869, type=int,
                         help='Total number of sentences in file')
     parser.add_argument('-lr', dest="lr", default=0.001, type=float, help='Learning rate')
-    parser.add_argument('-batch', dest="batch_size", default=8, type=int, help='Batch size')
+    parser.add_argument('-batch', dest="batch_size", default=128, type=int, help='Batch size')
     parser.add_argument('-epoch', dest="max_epochs", default=50, type=int, help='Max epochs')
     parser.add_argument('-l2', dest="l2", default=0.00001, type=float, help='L2 regularization')
     parser.add_argument('-seed', dest="seed", default=1234, type=int, help='Seed for randomization')
     parser.add_argument('-sample', dest="sample", default=1e-4, type=float, help='Subsampling parameter')
-    parser.add_argument('-neg', dest="num_neg", default=10, type=int, help='Number of negative samples')
+    parser.add_argument('-neg', dest="num_neg", default=100, type=int, help='Number of negative samples')
     parser.add_argument('-side_int', dest="side_int", default=10000, type=int, help='Number of negative samples')
     parser.add_argument('-gcn_layer', dest="gcn_layer", default=1, type=int,
                         help='Number of layers in GCN over dependency tree')
@@ -631,7 +614,7 @@ if __name__ == "__main__":
 
     # Added these two arguments to enable others to personalize the training set. Otherwise, the programme may suffer from memory overflow easily.
     # It is suggested that the -maxlen be set no larger than 100.
-    parser.add_argument('-maxsentlen', dest="max_sent_len", default=10, type=int,
+    parser.add_argument('-maxsentlen', dest="max_sent_len", default=50, type=int,
                         help='Max length of the sentences in data.txt (default: 40)')
     parser.add_argument('-maxdeplen', dest="max_dep_len", default=800, type=int,
                         help='Max length of the dependency relations in data.txt (default: 800)')
