@@ -1,10 +1,14 @@
-from models import Model
-from helper import *
-import tensorflow as tf, time, ctypes
+import os
+
+import ctypes
+import tensorflow as tf
+import time
+from sparse import COO
 from web.embedding import Embedding
 from web.evaluate import evaluate_on_all
-from sparse import COO
 
+from helper import *
+from models import Model
 from settings import settings
 
 base_dir = settings.base_data_dir
@@ -63,8 +67,6 @@ class SynGCN(Model):
         """
         self.logger.info("Loading data")
 
-        import os
-
         self.voc2id = read_mappings(os.path.join(base_dir, 'voc2id.txt'))
         self.voc2id = {k: int(v) for k, v in self.voc2id.items()}
         self.id2freq = read_mappings(os.path.join(base_dir, 'id2freq.txt'))
@@ -80,8 +82,8 @@ class SynGCN(Model):
         # Calculating rejection probability
         corpus_size = np.sum(list(self.id2freq.values()))
         rel_freq = {_id: freq / corpus_size for _id, freq in self.id2freq.items()}
-        self.rej_prob = {_id: (1 - self.p.sample / rel_freq[_id]) - np.sqrt(self.p.sample / rel_freq[_id]) for _id in
-                         self.id2freq}
+        self.rej_prob = {_id: (1 - self.p.sample / rel_freq[_id]) - np.sqrt(self.p.sample / rel_freq[_id])
+                         for _id in self.id2freq}
         self.voc_freq_l = [self.id2freq[_id] for _id in range(len(self.voc2id))]
 
         if not self.p.context: self.p.win_size = 0
