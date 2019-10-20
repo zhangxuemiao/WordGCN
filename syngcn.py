@@ -139,14 +139,58 @@ class SynGCN(Model):
         Adjacency matrix shape=[Number of dependency labels, Batch size, seq_len, seq_len]
         """
         num_edges = np.sum(batch['elen'])
+        print(f'num_edges -> {num_edges}')
+
+        print(f'self.p.batch_size -> {self.p.batch_size}')
         b_ind = np.expand_dims(np.repeat(np.arange(self.p.batch_size), batch['elen']), axis=1)
         e_ind = np.reshape(batch['edges'], [-1, 3])[:num_edges]
 
-        adj_ind = np.concatenate([b_ind, e_ind], axis=1)
-        adj_ind = adj_ind[:, [3, 0, 1, 2]]
-        adj_data = np.ones(num_edges, dtype=np.float32)
+        print(f"batch['edges'] -> {batch['edges'].shape}. {np.count_nonzero(batch['edges'])}, {batch['edges']}")
+        print(f'b_ind -> {b_ind.shape}')
+        print(f'e_ind -> {e_ind.shape}')
 
-        return COO(adj_ind.T, adj_data, shape=(self.num_deLabel, self.p.batch_size, seq_len, seq_len)).todense()
+        adj_ind = np.concatenate([b_ind, e_ind], axis=1)
+        print(f'adj_ind -> {adj_ind.shape}')
+
+        adj_ind = adj_ind[:, [3, 0, 1, 2]]
+        print(f'adj_ind -> {adj_ind.shape}, {adj_ind}')
+
+        adj_data = np.ones(num_edges, dtype=np.float32)
+        print(f'adj_data -> {adj_data.shape}, {adj_data}')
+
+        # return COO(adj_ind.T, adj_data, shape=(self.num_deLabel, self.p.batch_size, seq_len, seq_len)).todense()
+
+        """ Demo usage of COO 
+        # COO.__init__(self, coordinates, data=None, shape=None,
+        #               has_duplicates=True, sorted=False, prune=False, cache=False, fill_value=None):
+        >>> x = np.eye(4)
+        >>> x
+        array([[1., 0., 0., 0.],
+               [0., 1., 0., 0.],
+               [0., 0., 1., 0.],
+               [0., 0., 0., 1.]])
+        >>> x[2,3]=5
+        >>> x
+        array([[1., 0., 0., 0.],
+               [0., 1., 0., 0.],
+               [0., 0., 1., 5.],
+               [0., 0., 0., 1.]])
+        >>> s = COO.from_numpy(x)
+        >>> s
+        <COO: shape=(4, 4), dtype=float64, nnz=5, fill_value=0.0>
+        >>> s.data
+        array([1., 1., 1., 5., 1.])
+        >>> s.co
+        s.conj(   s.coords  s.copy(   
+        >>> s.coords
+        array([[0, 1, 2, 2, 3],
+               [0, 1, 2, 3, 3]])
+        """
+        coo = COO(adj_ind.T, adj_data, shape=(self.num_deLabel, self.p.batch_size, seq_len, seq_len))
+        print(f'coo -> {coo}')
+        coo_dense = coo.todense()
+
+        return coo_dense
 
     def pad_data(self, data, dlen, sub_sample=[]):
         """
@@ -532,6 +576,10 @@ class SynGCN(Model):
 
         st = time.time()
         for step, batch in enumerate(self.getBatches(shuffle)):
+            # print(f'batch -> {batch} - {batch.keys()}')
+            # for key in batch:
+            #     print(f'key: {key}; shape: {batch.get(key).shape}')
+
             feed = self.create_feed_dict(batch)
             loss, _ = sess.run([self.loss, self.train_op], feed_dict=feed)
             losses.append(loss)
