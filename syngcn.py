@@ -139,6 +139,7 @@ class SynGCN(Model):
         Adjacency matrix shape=[Number of dependency labels, Batch size, seq_len, seq_len]
         """
         num_edges = np.sum(batch['elen'])
+        print(f"batch['elen'] -> {batch['elen'].shape} - {batch['elen']}")
         print(f'num_edges -> {num_edges}')
 
         print(f'self.p.batch_size -> {self.p.batch_size}')
@@ -146,12 +147,14 @@ class SynGCN(Model):
         e_ind = np.reshape(batch['edges'], [-1, 3])[:num_edges]
 
         print(f"batch['edges'] -> {batch['edges'].shape}. {np.count_nonzero(batch['edges'])}, {batch['edges']}")
-        print(f'b_ind -> {b_ind.shape}')
-        print(f'e_ind -> {e_ind.shape}')
+        print(f'b_ind -> {b_ind.shape} - {b_ind}')
+        print(f'e_ind -> {e_ind.shape} - {e_ind}')
 
         adj_ind = np.concatenate([b_ind, e_ind], axis=1)
-        print(f'adj_ind -> {adj_ind.shape}')
+        print(f'adj_ind -> {adj_ind.shape} - {adj_ind}')
 
+        # 3 -> dim for dep label; 0 -> dim for batch_size, 1, 2 -> dims for coordinates;
+        # 注意,edges中存的就是coordinates+label (x, y, label_id),
         adj_ind = adj_ind[:, [3, 0, 1, 2]]
         print(f'adj_ind -> {adj_ind.shape}, {adj_ind}')
 
@@ -310,9 +313,7 @@ class SynGCN(Model):
                     act_sum = tf.zeros([batch_size, max_nodes, gcn_dim])
 
                 for lbl in range(max_labels):
-
                     with tf.variable_scope('label-%d_name-%s_layer-%d' % (lbl, name, layer)) as scope:
-
                         w_in = tf.get_variable('w_in', [in_dim, gcn_dim],
                                                initializer=tf.contrib.layers.xavier_initializer(),
                                                regularizer=self.regularizer)
@@ -427,7 +428,6 @@ class SynGCN(Model):
         -------
         loss:		Computes loss
         """
-
         target_words = tf.reshape(self.sent_wrds, [-1, 1])
 
         neg_ids, _, _ = tf.nn.fixed_unigram_candidate_sampler(
@@ -443,15 +443,10 @@ class SynGCN(Model):
         neg_ids = tf.reshape(neg_ids, [self.p.batch_size, self.p.num_neg])
         neg_ids = tf.reshape(tf.tile(neg_ids, [1, self.seq_len]), [self.p.batch_size, self.seq_len, self.p.num_neg])
 
-        target_ind = tf.concat([
-            tf.expand_dims(self.sent_wrds, axis=2),
-            neg_ids
-        ], axis=2)
-
+        target_ind = tf.concat([tf.expand_dims(self.sent_wrds, axis=2), neg_ids], axis=2)
         target_labels = tf.concat([
             tf.ones([self.p.batch_size, self.seq_len, 1], dtype=tf.float32),
-            tf.zeros([self.p.batch_size, self.seq_len, self.p.num_neg], dtype=tf.float32)],
-            axis=2)
+            tf.zeros([self.p.batch_size, self.seq_len, self.p.num_neg], dtype=tf.float32)], axis=2)
         target_embed = tf.nn.embedding_lookup(self.context_matrix, target_ind)
         pred = tf.reduce_sum(tf.expand_dims(nn_out, axis=2) * target_embed, axis=3)
         target_labels = tf.reshape(target_labels, [self.p.batch_size * self.seq_len, -1])
@@ -461,7 +456,7 @@ class SynGCN(Model):
         masked_loss = total_loss * tf.reshape(self.sent_mask, [-1])
         loss = tf.reduce_sum(masked_loss) / tf.reduce_sum(self.sent_mask)
 
-        if self.regularizer != None:
+        if self.regularizer is not None:
             loss += tf.contrib.layers.apply_regularization(self.regularizer,
                                                            tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
 
